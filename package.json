@@ -20,7 +20,12 @@
       {
         "command": "undo-tree.goDown",
         "title": "Go Down the Tree."
+      },
+      {
+        "command": "undo-tree.showTree",
+        "title": "Show Undo Tree."
       }
+ 
     ]
   },
   "scripts": {

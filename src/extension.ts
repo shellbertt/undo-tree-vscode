@@ -25,8 +25,9 @@ class TreeNode<T> {
 		}
     }
 
-    addChild(node: TreeNode<T>): void {
+    addChild(node: TreeNode<T>): TreeNode<T> {
         this.children.push(node);
+		return node;
     }
 }
 
@@ -63,7 +64,6 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.workspace.onDidChangeTextDocument((event) => {
 			// Check if the changes are related to user actions (e.g., undo)
 			
-			cur.addChild(new TreeNode<ContentChanges>({id: id+1, changes:event.contentChanges}));
 
 			/* 
 				* <event>: TextDocumentChangeEvent
@@ -77,14 +77,128 @@ export function activate(context: vscode.ExtensionContext) {
 				* reference: https://code.visualstudio.com/api/references/vscode-api#TextDocumentChangeEvent
 			*/
 			
-			if (event.reason != undefined) {
-				console.log("undo or redo");
-				console.log(event);
+			if (event.reason == vscode.TextDocumentChangeReason.Undo) {
+				let newNode = new TreeNode<ContentChanges>({id: ++id, changes:event.contentChanges}, cur)
+				cur.addChild(newNode);
+				cur = newNode;
+				console.log("undo");
+				console.log(cur);
+			} else if (event.reason == vscode.TextDocumentChangeReason.Redo) {
+				cur = cur.parent;
+				console.log("redo");
+				console.log(cur);
 			}
 		});
 	});
 
 	context.subscriptions.push(disposable);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('undo-tree.showTree', () => {
+		  // Create and show panel
+			const panel = vscode.window.createWebviewPanel(
+			'undo-tree',
+			'Undo Tree',
+			vscode.ViewColumn.One,
+			{
+				enableScripts: true,
+				retainContextWhenHidden: true,
+			}
+		  );
+		  // And set its HTML content
+		  panel.webview.html = `<!DOCTYPE html>
+		  <html lang="en">
+		  <head>
+			  <meta charset="UTF-8">
+			  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+			  <title>D3 Hierarchical Tree Example</title>
+			  <!-- Include D3.js library -->
+			  <script src="https://d3js.org/d3.v7.min.js"></script>
+			  <style>
+				  /* Define styles for the nodes and links */
+				  .node {
+					  fill: #ccc;
+					  stroke: #333;
+					  stroke-width: 2px;
+				  }
+		  
+				  .link {
+					  fill: none;
+					  stroke: #555;
+					  stroke-width: 1.5px;
+				  }
+			  </style>
+		  </head>
+		  <body>
+		  
+			  <!-- Create an SVG container for the tree -->
+			  <svg width="2000" height="2000"></svg>
+		  
+			  <script>
+				  // Sample hierarchical tree data
+				  const treeData = {
+					  name: 'Root',
+					  children: [
+						  {
+							  name: 'Node 1',
+							  children: [
+								  { name: 'Node 1.1' },
+								  { name: 'Node 1.2' }
+							  ]
+						  },
+						  {
+							  name: 'Node 2',
+							  children: [
+								  { name: 'Node 2.1' },
+								  {
+									  name: 'Node 2.2',
+									  children: [
+										  { name: 'Node 2.2.1' },
+										  { name: 'Node 2.2.2' }
+									  ]
+								  }
+							  ]
+						  }
+					  ]
+				  };
+		  
+				  // Create a D3 tree layout
+				  const treeLayout = d3.tree().size([1000, 1000]);
+		  
+				  // Append an SVG group to the body
+				  const svg = d3.select('svg');
+				  const g = svg.append('g').attr('transform', 'translate(1000,50) rotate(90)')
+		  
+				  // Create a hierarchical structure from the data
+				  const root = d3.hierarchy(treeData);
+				  // tree.rotate([0, 90]);
+				  const tree = treeLayout(root);
+		  
+				  // Draw links
+				  const link = g.selectAll('.link')
+					  .data(tree.links())
+					  .enter().append('path')
+					  .attr('class', 'link')
+					  .attr('d', d3.linkHorizontal()
+						  .x(d => d.y)
+						  .y(d => d.x));
+		  
+				  // Draw nodes
+				  const node = g.selectAll('.node')
+					  .data(tree.descendants())
+					  .enter().append('circle')
+					  .attr('class', 'node')
+					  .attr('r', 10)
+					  .attr('cx', d => d.y)
+					  .attr('cy', d => d.x);
+		  
+			  </script>
+		  </body>
+		  </html>
+		  
+		  `;
+		})
+	  );
 
 }
 
