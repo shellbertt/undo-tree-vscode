@@ -87,11 +87,16 @@ export function activate(context: vscode.ExtensionContext) {
 				cur = cur.parent;
 				console.log("redo");
 				console.log(cur);
+			} else {
+				console.log("other");
+				console.log("event")
 			}
 		});
 	});
 
 	context.subscriptions.push(disposable);
+
+	vscode.commands.executeCommand("undo-tree.captureUndo")
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('undo-tree.showTree', () => {
